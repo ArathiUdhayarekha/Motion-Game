@@ -48,7 +48,7 @@ Contributions are welcome! If you have suggestions for improvements or new featu
 This project is licensed under the MIT License. See the LICENSE file for more details.
 
 ### **Contact**
-For any inquiries or feedback, please reach out to [your-email@example.com].
+For any inquiries or feedback, please reach out to udayarekhaarathi@gmail.com.
 
 ---
 
