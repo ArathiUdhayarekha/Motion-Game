@@ -1,0 +1,296 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Motion challenge with Exact Matrix Positions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap");
+    body {
+      font-family: "Inter", sans-serif;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    #gameGrid {
+      width: 200px;
+      height: 160px;
+      display: grid;
+      grid-template-columns: repeat(5, 40px);
+      grid-template-rows: repeat(4, 40px);
+      gap: 2px;
+      position: relative;
+      user-select: none;
+      border: 2px solid #e5e7eb;
+      box-sizing: content-box;
+      background:
+        linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+        linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .grid-cell {
+      width: 40px;
+      height: 40px;
+      background: transparent;
+    }
+    .draggable {
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      position: absolute;
+      z-index: 10;
+      transition: transform 0.1s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+    }
+    .dragging {
+      cursor: grabbing;
+      transition: none;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameGrid">
+    <!-- 5x4 grid cells -->
+    <div class="grid-cell" data-row="1" data-col="1"></div>
+    <div class="grid-cell" data-row="1" data-col="2"></div>
+    <div class="grid-cell" data-row="1" data-col="3"></div>
+    <div class="grid-cell" data-row="1" data-col="4"></div>
+    <div class="grid-cell" data-row="1" data-col="5"></div>
+
+    <div class="grid-cell" data-row="2" data-col="1"></div>
+    <div class="grid-cell" data-row="2" data-col="2"></div>
+    <div class="grid-cell" data-row="2" data-col="3"></div>
+    <div class="grid-cell" data-row="2" data-col="4"></div>
+    <div class="grid-cell" data-row="2" data-col="5"></div>
+
+    <div class="grid-cell" data-row="3" data-col="1"></div>
+    <div class="grid-cell" data-row="3" data-col="2"></div>
+    <div class="grid-cell" data-row="3" data-col="3"></div>
+    <div class="grid-cell" data-row="3" data-col="4"></div>
+    <div class="grid-cell" data-row="3" data-col="5"></div>
+
+    <div class="grid-cell" data-row="4" data-col="1"></div>
+    <div class="grid-cell" data-row="4" data-col="2"></div>
+    <div class="grid-cell" data-row="4" data-col="3"></div>
+    <div class="grid-cell" data-row="4" data-col="4"></div>
+    <div class="grid-cell" data-row="4" data-col="5"></div>
+
+    <!-- Black hole centered in first cell -->
+    <div id="blackHole" class="w-6 h-6 rounded-full bg-black absolute" title="Black Hole" style="width: 24px; height: 24px; left: 8px; top: 8px;"></div>
+
+    <!-- Orange rectangle JH (draggable) -->
+    <div id="orangeRect" class="draggable bg-orange-500" style="width: 40px; height: 80px;" title="JH">JH</div>
+
+    <!-- Red ball (draggable) centered in its subbox -->
+    <div id="redBall" class="draggable rounded-full bg-red-500" style="width: 24px; height: 16px;" title="Red Ball"></div>
+
+    <!-- Blue rectangle O (draggable) -->
+    <div id="blueRect" class="draggable bg-blue-600" style="width: 40px; height: 120px;" title="O">O</div>
+
+    <!-- Green rectangle LH (draggable) -->
+    <div id="greenRect" class="draggable bg-green-600" style="width: 80px; height: 40px;" title="LH">LH</div>
+
+    <!-- Purple rectangle RH (draggable) -->
+    <div id="purpleRect" class="draggable bg-purple-900" style="width: 40px; height: 120px;" title="RH">RH</div>
+  </div>
+
+  <script>
+    (() => {
+      const grid = document.getElementById("gameGrid");
+      const blackHole = document.getElementById("blackHole");
+      const redBall = document.getElementById("redBall");
+      const orangeRect = document.getElementById("orangeRect");
+      const blueRect = document.getElementById("blueRect");
+      const greenRect = document.getElementById("greenRect");
+      const purpleRect = document.getElementById("purpleRect");
+      const draggables = [redBall, orangeRect, blueRect, greenRect, purpleRect];
+      let score = 0;
+
+      const cellWidth = 40;
+      const cellHeight = 40;
+      const gridCols = 5;
+      const gridRows = 4;
+      const maxLeft = cellWidth * gridCols - 1;
+      const maxTop = cellHeight * gridRows - 1;
+
+      // Exact matrix positions for each object (row, col)
+      // Positions are top-left corner relative to grid container
+      // We'll place objects exactly in these grid cells:
+      // blackHole: row 1, col 1 (centered)
+      // orangeRect: row 2, col 1 (40x80, spans 2 rows)
+      // blueRect: row 1, col 3 (40x120, spans 3 rows)
+      // greenRect: row 4, col 1 (80x40, spans 2 cols)
+      // purpleRect: row 2, col 4 (40x120, spans 3 rows)
+      // redBall: row 1, col 5 (24x16, centered)
+
+      const positions = {
+        blackHole: { row: 1, col: 1, width: 24, height: 24 },
+        orangeRect: { row: 2, col: 1, width: 40, height: 80 },
+        blueRect: { row: 1, col: 3, width: 40, height: 120 },
+        greenRect: { row: 4, col: 1, width: 80, height: 40 },
+        purpleRect: { row: 2, col: 4, width: 40, height: 120 },
+        redBall: { row: 1, col: 5, width: 24, height: 16 },
+      };
+
+      function placeObject(el, pos) {
+        const left = (pos.col - 1) * cellWidth;
+        const top = (pos.row - 1) * cellHeight;
+        // For blackHole and redBall, center inside cell
+        if (el === blackHole || el === redBall) {
+          el.style.left = left + (cellWidth - pos.width) / 2 + "px";
+          el.style.top = top + (cellHeight - pos.height) / 2 + "px";
+        } else {
+          el.style.left = left + "px";
+          el.style.top = top + "px";
+        }
+        el.style.width = pos.width + "px";
+        el.style.height = pos.height + "px";
+      }
+
+      function checkRedBlackCollision() {
+        const bhRect = blackHole.getBoundingClientRect();
+        const rbRect = redBall.getBoundingClientRect();
+        return !(
+          rbRect.left >= bhRect.right ||
+          rbRect.right <= bhRect.left ||
+          rbRect.top >= bhRect.bottom ||
+          rbRect.bottom <= bhRect.top
+        );
+      }
+
+      function resetPositions() {
+        placeObject(blackHole, positions.blackHole);
+        placeObject(orangeRect, positions.orangeRect);
+        placeObject(blueRect, positions.blueRect);
+        placeObject(greenRect, positions.greenRect);
+        placeObject(purpleRect, positions.purpleRect);
+        placeObject(redBall, positions.redBall);
+      }
+
+      function isCollidingWithOthers(el, left, top) {
+        const elRect = {
+          left,
+          top,
+          right: left + el.offsetWidth,
+          bottom: top + el.offsetHeight,
+        };
+
+        for (const other of draggables) {
+          if (other === el || other === redBall) continue;
+
+          const otherLeft = parseFloat(other.style.left);
+          const otherTop = parseFloat(other.style.top);
+          const otherRect = {
+            left: otherLeft,
+            top: otherTop,
+            right: otherLeft + other.offsetWidth,
+            bottom: otherTop + other.offsetHeight,
+          };
+
+          if (
+            elRect.left < otherRect.right &&
+            elRect.right > otherRect.left &&
+            elRect.top < otherRect.bottom &&
+            elRect.bottom > otherRect.top
+          ) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      draggables.forEach(el => {
+        let offsetX, offsetY;
+        let dragging = false;
+
+        function onPointerDown(e) {
+          e.preventDefault();
+          dragging = true;
+          el.classList.add("dragging");
+
+          const rect = el.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+
+          window.addEventListener("pointermove", onPointerMove);
+          window.addEventListener("pointerup", onPointerUp);
+          window.addEventListener("pointercancel", onPointerUp);
+        }
+
+        function onPointerMove(e) {
+          if (!dragging) return;
+
+          const gridRect = grid.getBoundingClientRect();
+          let left = e.clientX - gridRect.left - offsetX;
+          let top = e.clientY - gridRect.top - offsetY;
+
+          // Clamp inside grid
+          left = Math.min(Math.max(0, left), cellWidth * gridCols - el.offsetWidth);
+          top = Math.min(Math.max(0, top), cellHeight * gridRows - el.offsetHeight);
+
+          // Snap to grid with special red ball centering
+          let snapped;
+          if (el === redBall) {
+            let leftCell = Math.round(left / cellWidth) * cellWidth;
+            let topCell = Math.round(top / cellHeight) * cellHeight;
+            snapped = {
+              left: Math.min(maxLeft, Math.max(0, leftCell + (cellWidth - 24) / 2)),
+              top: Math.min(maxTop, Math.max(0, topCell + (cellHeight - 16) / 2)),
+            };
+          } else {
+            snapped = {
+              left: Math.min(maxLeft, Math.max(0, Math.round(left / cellWidth) * cellWidth)),
+              top: Math.min(maxTop, Math.max(0, Math.round(top / cellHeight) * cellHeight)),
+            };
+          }
+
+          if (el !== redBall) {
+            if (isCollidingWithOthers(el, snapped.left, snapped.top)) {
+              return;
+            }
+          }
+
+          el.style.left = snapped.left + "px";
+          el.style.top = snapped.top + "px";
+
+          if (el === redBall) {
+            if (checkRedBlackCollision()) {
+              score++;
+              alert("Score: " + score);
+              resetPositions();
+            }
+          }
+        }
+
+        function onPointerUp() {
+          dragging = false;
+          el.classList.remove("dragging");
+          window.removeEventListener("pointermove", onPointerMove);
+          window.removeEventListener("pointerup", onPointerUp);
+          window.removeEventListener("pointercancel", onPointerUp);
+        }
+
+        el.addEventListener("pointerdown", onPointerDown);
+      });
+
+      resetPositions();
+    })();
+  </script>
+</body>
+</html>
